@@ -3,11 +3,11 @@ function J = window_jackknife(p, W)
 %
 % J = ref.window_jackknife(p, W)
 %
-% WHY. The linearized error bars of step 4 cannot be trusted: all
-% azimuths are synthesized from the same four channels, so their errors
-% are correlated, and a diagonal C_d counts them as independent (lesson 3);
-% and chi2/dof far below 1 says sigma per entry is wrong too. Depth rows
-% ~ one coherence window apart ARE nearly independent, so:
+% WHY. The linearized error bars of step 4 FAIL the Monte Carlo test (ddelta
+% ~5x too small) even though chi2/dof is ~1: all azimuths are synthesized
+% from the same four channels, so their errors are correlated, and a
+% diagonal C_d counts them as independent (lesson 3). Depth rows ~ one
+% coherence window apart ARE nearly independent, so:
 %
 % THE JACKKNIFE. Drop one row, refit (starting from the full answer - no
 % new grid search), repeat for every row. The spread of those n answers,

@@ -3,10 +3,9 @@ function J = window_jackknife(p, W)
 %
 % J = window_jackknife(p, W)
 %
-% The step-4 error bars cannot be trusted (guide, Monte Carlo test): the
-% 18 azimuths are synthesized from 4 channels, so their errors are
-% correlated (lesson 3), and a sigma per entry treats them as independent.
-% chi2/dof far below 1 says that sigma is wrong as well.
+% The step-4 error bars are too small (guide, Monte Carlo test): the 18
+% azimuths are synthesized from 4 channels, so their errors are correlated
+% (lesson 3), and a sigma per entry treats them as independent.
 %
 % Depth rows one coherence window apart are nearly independent. Leave one
 % row out, refit from p, and repeat for each row. With n rows and

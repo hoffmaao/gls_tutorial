@@ -70,8 +70,8 @@ dl = zeros(R, 1); sgd = zeros(R, 1);
 for k = 1:R
   Qk = apres.calibratePhase(apres.syntheticSite(truth, struct('seed', 100 + k, 'z_max', 600)));
   Fk = apres.coherenceField(Qk, struct('z_range', [20 580]));
-  rk = abs(Fk.z - 400) <= 30;
-  Wk = struct('psi', Fk.psi, 'z', Fk.z(rk), 'zc', 400, 'C', Fk.C(rk, :), 'sigma', Fk.sigma(rk, :));
+  rk = abs(Fk.z - 500) <= 30;
+  Wk = struct('psi', Fk.psi, 'z', Fk.z(rk), 'zc', 500, 'C', Fk.C(rk, :), 'sigma', Fk.sigma(rk, :));
   pk = fit_window(Wk);
   Ek = window_errors(pk, Wk);
   th(k) = deg2rad(35) + angle(exp(2i*(pk(1) - deg2rad(35)))) / 2;   % fold: it is an axis
@@ -83,12 +83,10 @@ fprintf('theta0: measured scatter %.3f deg, claimed %.3f deg -> ratio %.2f\n', .
 fprintf('ddelta: measured scatter %.5f, claimed %.5f -> ratio %.2f\n', ...
   std(dl), median(sgd), median(sgd) / std(dl));
 fprintf('median chi2/dof %.2f\n', median(chi2));
-% The ratios come out near 1 (about 1.4 for theta0, 1.0 for ddelta), but
-% for the wrong reasons. chi2/dof is about 0.16, so sigma per entry is ~2.5x
-% too large; and all 18 azimuths come from the same 4 channels, so their
-% errors are correlated (lesson 3) and the fit counts them as independent.
-% The two mistakes happen to cancel here. Nothing says they cancel on
-% real data.
+% chi2/dof is about 0.8, so sigma per entry is right. Yet the ddelta ratio
+% is about 0.2: that error bar is ~5x too small (theta0: ~0.85). All 18
+% azimuths come from the same 4 channels, so their errors are correlated
+% (lesson 3), and the fit counts them as independent.
 
 %% Step 5 - resampled error bars
 % Edit project/student/window_jackknife.m, then check_step(5). Then repeat
@@ -97,8 +95,8 @@ sj = zeros(R, 1); sjd = zeros(R, 1);
 for k = 1:R
   Qk = apres.calibratePhase(apres.syntheticSite(truth, struct('seed', 100 + k, 'z_max', 600)));
   Fk = apres.coherenceField(Qk, struct('z_range', [20 580]));
-  rk = abs(Fk.z - 400) <= 30;
-  Wk = struct('psi', Fk.psi, 'z', Fk.z(rk), 'zc', 400, 'C', Fk.C(rk, :), 'sigma', Fk.sigma(rk, :));
+  rk = abs(Fk.z - 500) <= 30;
+  Wk = struct('psi', Fk.psi, 'z', Fk.z(rk), 'zc', 500, 'C', Fk.C(rk, :), 'sigma', Fk.sigma(rk, :));
   Jk = window_jackknife(fit_window(Wk), Wk);
   sj(k) = Jk.sigma(1); sjd(k) = Jk.sigma(3);
 end
@@ -108,12 +106,14 @@ fprintf('ddelta: measured %.5f, jackknife %.5f -> ratio %.2f\n', ...
   std(dl), median(sjd), median(sjd) / std(dl));
 fprintf('theta0 mean error %.2f deg\n', rad2deg(mean(th) - deg2rad(35)));
 % The jackknife needs neither sigma nor independent azimuths, only rows
-% that are nearly independent. It comes out about 2x cautious for both
-% theta0 and ddelta. But theta0 is also biased: the mean error (~0.4 deg
-% here, up to ~2 deg in step 6) is far larger than its scatter, and no
-% error bar built from the scatter can see a bias. Quote dlam with its
-% jackknife sigma and theta0 with a floor of about 2 degrees (open
-% question 5).
+% that are nearly independent. For ddelta it comes out ~1.4x cautious; for
+% theta0 it is still ~1.5x too small (ratio ~0.65). The theta0 mean error
+% is ~0.002 deg: no bias, because the synthetic firn (top 40 m) is
+% isotropic, as apres.calibratePhase assumes.
+%
+% Move the window to 400 m and rerun. The phase delta passes pi near
+% 370 m, where |C| drops sharply with azimuth; the model misfits there
+% (chi2/dof ~40-90) and fit_column abstains.
 
 %% Step 6 - the whole column, known answer
 % Edit project/student/fit_column.m, then check_step(6).
@@ -134,11 +134,11 @@ plot(repelem(tr.dlam', 2), zz(:), 'k', 'LineWidth', 1.5); hold on;
 errorbar(out.dlam, out.zw, out.jk_dlam, 'horizontal', 'o');
 set(gca, 'YDir', 'reverse'); xlim([0 0.3]); xlabel('\Delta\lambda'); grid on; title('\Delta\lambda(z)');
 % The top layer (dlam 0.05) turns the phase too little in 60 m, so those
-% windows abstain. Windows across a layer boundary report a blend.
+% windows abstain, as do windows where the phase passes pi (chi2/dof > 5).
 %
 % Now rerun with the axis turning with depth:
 %     'theta', deg2rad([20; 25; 30; 35; 40])
-% dlam survives; theta0 fails below ~600 m. The model assumes one axis for
+% Every window abstains (chi2/dof 10-1000). The model assumes one axis for
 % the whole column above each window; when the axis turns, the coherence
 % at depth carries every layer above it. Handling that needs a model of the
 % full column, which is what ptt.fabricGLS is (lesson 7).
@@ -180,6 +180,6 @@ end
 % 4. apres.calibratePhase chose between two branches that mirror theta0
 %    about north. Flip it (add pi to a and b) and rerun one site. What
 %    field information would decide it?
-% 5. The Monte Carlo found a theta0 bias larger than any error bar.
-%    Measure it on synthetics matched to each site (same n_looks, similar
-%    dlam) and use it as that site's floor. What does that assume?
+% 5. The Monte Carlo found the theta0 jackknife ~1.5x too small.
+%    Calibrate an inflation factor on synthetics matched to each site
+%    (same n_looks, similar dlam) and apply it. What does that assume?

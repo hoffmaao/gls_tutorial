@@ -98,10 +98,13 @@ if ~isempty(zr), keep = keep(z(keep) >= zr(1) & z(keep) <= zr(2)); end
 % complex coherence and its per-component noise, for fitting the complex
 % field directly (the project). For a coherence estimated from N looks the
 % phase variance is (1-|C|^2)/(2N|C|^2) (lesson 2), so the scatter ACROSS
-% the phasor - |C| times that - has variance (1-|C|^2)/(2N). That is the
-% dominant error, and it is used for both real and imaginary parts.
+% the phasor - |C| times that - has variance (1-|C|^2)/(2N). ALONG the
+% phasor (the magnitude) it is (1-|C|^2)^2/(2N), much smaller when |C| is
+% near 1. sigma is the average of the two, the typical error of one real
+% or imaginary part.
 Ck = C(keep, :);
-sigma = sqrt(max(1 - abs(Ck).^2, 0.02) / (2 * n_looks));
+q = max(1 - abs(Ck).^2, 1e-4);
+sigma = sqrt(q .* (1 + q) / (4 * n_looks));
 
 O = struct('z', z(keep), 'psi', psi, 'C', Ck, 'sigma', sigma, ...
   'dP_hh', dP_hh(keep, :), 'dP_hv', dP_hv(keep, :), ...
