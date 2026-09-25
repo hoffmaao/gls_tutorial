@@ -8,11 +8,10 @@ It is intended to run on your personal computer with MATLAB preinstalled.
 
 ## Setup
 
-1. Put this folder anywhere.
-2. Download `GHOST24_Polarimetric_pRES_OZ.zip` (the GHOST 2023/24 polarimetric
+1. Download `GHOST24_Polarimetric_pRES_OZ.zip` (the GHOST 2023/24 polarimetric
    pRES data, about 130 MB) and unzip it into `data/`, so you have
    `data/GHOST24_Polarimetric_pRES_OZ/PpRES_20240551_001/...`.
-3. In MATLAB, `cd` to this folder. Every lesson calls `tutorial_setup`
+2. In MATLAB, `cd` to this folder. Every lesson calls `tutorial_setup`
    itself.
 
 Each lesson is a plain `.m` script split into `%%` sections. Run one section
