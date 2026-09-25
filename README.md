@@ -21,25 +21,23 @@ at a time (Ctrl+Enter, or Cmd+Enter on a Mac) and read what it prints.
 
 Each lesson will generate it's own data, identifies a porblem that uses these data and then solves the problem, and checks the error estimates using Monte Carlo methods.
 
-| # | file | new idea | where it lives in `fabric_anisotropy` |
+| # | file | description |
 |---|---|---|---|
-| 0 | `lesson00_matlab_matrices.m` | vectors, `G*m`, `'`, `.*`, `\`, variance, covariance | - |
-| 1 | `lesson01_ols.m` | least squares by grid search, then normal equations; `C_M`; Monte Carlo | `A \ b`, `C_M` |
-| 2 | `lesson02_wls.m` | 1/variance weights; the coherence-phase CRB | `fabricGLS` data errors, `quadpolFabricLS` weights |
-| 3 | `lesson03_gls_correlated.m` | correlated noise, `C_d`, whitening with `chol`, variance inflation | `n_looks`, `n_indep_*` |
-| 4 | `lesson04_chi2.m` | reduced chi-square: wrong noise vs wrong model; widen, never shrink | `chi2_dof` |
-| 5 | `lesson05_prior_traveltime.m` | ill-posed inversion, priors, resolution, abstention | rebuilds `traveltimeFabricML` (checked to 1e-11) |
-| 6 | `lesson06_nonlinear.m` | Jacobian, Gauss-Newton, false bottoms, multi-start, closed-form nuisances | `fabricGLS` solver, `quadpolFabricLS` model |
-| 7 | `lesson07_fabricGLS.m` | reading `fabricGLS` block by block, then testing its error bars | `fabricGLS` |
-| 8 | `lesson08_apres_radar.m` | how ApRES forms a range profile, the four-shot polarimetric measurement, and how these data differ from the Ridge A survey | - |
-| 9 | `lesson09_apres_data.m` | one GHOST site from raw files to the coherence field | `+apres` (below) |
+| 0 | `lesson00_matlab_matrices.m` | vectors, `G*m`, `'`, `.*`, `\`, variance, covariance |
+| 1 | `lesson01_ols.m` | least squares by grid search, then normal equations; `C_M`; Monte Carlo |
+| 2 | `lesson02_wls.m` | 1/variance weights; the coherence-phase CRB |
+| 3 | `lesson03_gls_correlated.m` | correlated noise, `C_d`, whitening with `chol`, variance inflation |
+| 4 | `lesson04_chi2.m` | reduced chi-square |
+| 5 | `lesson05_prior_traveltime.m` | ill-posed inversion, priors, resolution, abstention | 
+| 6 | `lesson06_nonlinear.m` | Jacobian, Gauss-Newton, local minima vs. global minimum |
+| 7 | `lesson07_fabricGLS.m` | reading `fabricGLS` block by block, then testing its error bars |
+| 8 | `lesson08_apres_radar.m` | how ApRES forms a range profile, the four-shot polarimetric measurement, and how these data differ from the Ridge A survey |
+| 9 | `lesson09_apres_data.m` | one GHOST site from raw files to the coherence field |
 
 ## The project: build your own estimator
 
-`project/project_guide.m` walks the student through writing six functions in
-`project/student/`. After each one, `check_step(k)` compares it with a hidden
-reference on data with a known answer, prints PASS or FAIL, and says what is
-wrong.
+`project/project_guide.m` walks the student through writing six functions in `project/student/`. 
+After each one, `check_step(k)` compares it with a hidden reference on data with a known answer, prints PASS or FAIL, and gives some suggestions about what might be wrong.
 
 | step | function | what it does |
 |---|---|---|
