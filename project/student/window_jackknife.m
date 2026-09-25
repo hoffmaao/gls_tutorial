@@ -15,8 +15,9 @@ function J = window_jackknife(p, W)
 % For each row i:
 %   1. Wi = W without row i (drop it from z, C and sigma)
 %   2. q = fit_window(Wi, struct('p0', p))
-%   3. theta0 is an axis. If the refit flipped to the twin (sign of ddelta
-%      changed), undo it. Then fold onto p's branch:
+%   3. theta0 is an axis. If theta0 moved by more than 45 degrees from p,
+%      the refit landed on the twin (ddelta >= 0 is enforced), so switch
+%      to q = [q(1) + pi/2; -q(2); -q(3)]. Then fold onto p's branch:
 %          q(1) = p(1) + angle(exp(2i*(q(1) - p(1)))) / 2
 %          q(2) = p(2) + angle(exp(1i*(q(2) - p(2))))
 %

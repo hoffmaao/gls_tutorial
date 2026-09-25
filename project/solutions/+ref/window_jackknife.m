@@ -25,8 +25,8 @@ for i = 1:rows
   k = true(rows, 1); k(i) = false;
   Wi = struct('psi', W.psi, 'z', W.z(k), 'zc', W.zc, 'C', W.C(k, :), 'sigma', W.sigma(k, :));
   pi_ = ref.fit_window(Wi, struct('p0', p));
-  if pi_(3) * sign(p(3)) < 0 || abs(angle(exp(2i*(pi_(1) - p(1))))) > pi/2
-    pi_ = [pi_(1) + pi/2; -pi_(2); -pi_(3)];     % undo the ddelta >= 0 flip
+  if abs(angle(exp(2i*(pi_(1) - p(1))))) > pi/2
+    pi_ = [pi_(1) + pi/2; -pi_(2); -pi_(3)];     % theta0 moved > 45 deg: the twin
   end
   pi_(1) = p(1) + angle(exp(2i*(pi_(1) - p(1)))) / 2;
   pi_(2) = p(2) + angle(exp(1i*(pi_(2) - p(2))));

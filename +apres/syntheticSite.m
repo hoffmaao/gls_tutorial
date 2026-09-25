@@ -3,8 +3,10 @@ function [Q, truth] = syntheticSite(truth, opts)
 %
 % [Q, truth] = apres.syntheticSite(truth, opts)
 %
-% Returns Q in exactly the form apres.loadQuadpolSite returns real data,
-% so everything downstream can be tested on a known answer first.
+% Returns Q in the form apres.loadQuadpolSite(folder, struct('coregister',
+% false)) returns real data, so everything downstream can be tested on a
+% known answer first. The injected range offset is left in; pass Q through
+% apres.coregister to measure and remove it.
 %
 % HOW IT IS MADE.
 %   1. ptt.fujitaModel gives the four channel amplitudes (hh, vv, hv = vh)
@@ -33,7 +35,7 @@ function [Q, truth] = syntheticSite(truth, opts)
 %   .snr_surface_db (60)  co-pol power over noise near the surface
 %   .antenna_phase ([0.7 -0.4])  [a b]: receive and transmit V-minus-H
 %                         antenna phases [rad] (apres.calibratePhase)
-%   .range_offset (0.6)   VV range offset vs HH [bins]
+%   .range_offset (0.6)   injected VV range offset vs HH [bins]
 %   .speckle (true)       false: every bin reflects equally (no speckle)
 %   .seed (1)
 
@@ -86,7 +88,7 @@ for p = {'hh', 'vv', 'hv', 'vh'}
 end
 
 Q.z = z; Q.fc = fc; Q.site = 'synthetic';
-Q.offset_bins = struct('hv', 0, 'vh', 0, 'vv', opt(opts, 'range_offset', 0.6));
+Q.true_offset_bins = struct('hv', 0, 'vh', 0, 'vv', opt(opts, 'range_offset', 0.6));
 Q.true_antenna_phase = ab;
 end
 
