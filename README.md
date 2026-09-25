@@ -1,0 +1,106 @@
+# GLS tutorial: from a straight line to your own ice-fabric estimator
+
+A MATLAB course in the generalized least squares (GLS) inference used in
+[`fabric_anisotropy`](https://github.com/hoffmaao/fabric_anisotropy). It
+assumes no linear algebra background. It ends with the student building
+their own least-squares fabric estimator and running it on four real
+quad-pol ApRES sites.
+
+It runs on a personal computer with MATLAB alone, and needs no toolboxes,
+servers or other repositories.
+
+## Setup
+
+1. Put this folder anywhere.
+2. Download `GHOST24_Polarimetric_pRES_OZ.zip` (the GHOST 2023/24 polarimetric
+   pRES data, about 130 MB) and unzip it into `data/`, so you have
+   `data/GHOST24_Polarimetric_pRES_OZ/PpRES_20240551_001/...`.
+3. In MATLAB, `cd` to this folder. Every lesson calls `tutorial_setup`
+   itself.
+
+Each lesson is a plain `.m` script split into `%%` sections. Run one section
+at a time (Ctrl+Enter, or Cmd+Enter on a Mac) and read what it prints.
+
+## Lessons
+
+Each lesson makes data with a known answer, solves it, and checks the error
+bar by Monte Carlo against what the formula claims.
+
+| # | file | new idea | where it lives in `fabric_anisotropy` |
+|---|---|---|---|
+| 0 | `lesson00_matlab_matrices.m` | vectors, `G*m`, `'`, `.*`, `\`, variance, covariance | - |
+| 1 | `lesson01_ols.m` | least squares by grid search, then normal equations; `C_M`; Monte Carlo | `A \ b`, `C_M` |
+| 2 | `lesson02_wls.m` | 1/variance weights; the coherence-phase CRB | `fabricGLS` data errors, `quadpolFabricLS` weights |
+| 3 | `lesson03_gls_correlated.m` | correlated noise, `C_d`, whitening with `chol`, variance inflation | `n_looks`, `n_indep_*` |
+| 4 | `lesson04_chi2.m` | reduced chi-square: wrong noise vs wrong model; widen, never shrink | `chi2_dof` |
+| 5 | `lesson05_prior_traveltime.m` | ill-posed inversion, priors, resolution, abstention | rebuilds `traveltimeFabricML` (checked to 1e-11) |
+| 6 | `lesson06_nonlinear.m` | Jacobian, Gauss-Newton, false bottoms, multi-start, closed-form nuisances | `fabricGLS` solver, `quadpolFabricLS` model |
+| 7 | `lesson07_fabricGLS.m` | reading `fabricGLS` block by block, then testing its error bars | `fabricGLS` |
+| 8 | `lesson08_apres_radar.m` | how ApRES forms a range profile, the four-shot polarimetric measurement, and how these data differ from the Ridge A survey | - |
+| 9 | `lesson09_apres_data.m` | one GHOST site from raw files to the coherence field | `+apres` (below) |
+
+## The project: build your own estimator
+
+`project/project_guide.m` walks the student through writing six functions in
+`project/student/`. After each one, `check_step(k)` compares it with a hidden
+reference on data with a known answer, prints PASS or FAIL, and says what is
+wrong.
+
+| step | function | what it does |
+|---|---|---|
+| 1 | `coh_model` | the single-column HH-VV coherence model |
+| 2 | `window_cost` | the weighted misfit, with the coherence scale solved in closed form |
+| 3 | `fit_window` | grid search, then Gauss-Newton with a line search |
+| 4 | `window_errors` | linearized error bars and the chi-square check |
+| 5 | `window_jackknife` | leave-one-row-out error bars |
+| 6 | `fit_column` | the whole column, converted to Δλ, abstaining where it cannot know |
+
+Along the way, the guide makes the student test their own error bars. Their
+step-4 σ turns out several times too small, which motivates step 5. The guide
+ends by running their estimator on all four sites next to `ptt.ershadiFabric`,
+followed by open questions.
+
+**For instructors:**
+- `check_step(k, 'ref')` runs a test on the reference solution in
+  `project/solutions/+ref/`.
+- To grade a student's folder, put it first on the path and run
+  `check_step(1)` through `check_step(6)`.
+- The reference agrees with `ershadiFabric` on the axis at all four sites.
+
+### What the reference estimator can and can't do
+
+Measured on synthetic sites (`apres.syntheticSite`), with 60 m windows:
+
+- **Δλ:** unbiased to about 0.002, and its jackknife σ is honest (slightly
+  cautious).
+- **θ:** its jackknife σ is still 2-3 times too small, and speckle adds a bias
+  of up to a few degrees. Quote θ with a floor of about ±3°.
+- **Rotating axes:** it assumes one axis for the whole column above each
+  window. Where the axis turns with depth, θ goes wrong below the turn, which
+  is the case `fabricGLS` exists for.
+- **Weak fabric:** windows abstain when Δλ is below about 0.07 (too little
+  phase turn in 60 m at 300 MHz).
+- **Choice of branch:** the phase calibration can't tell θ from −θ (a mirror
+  about north). It picks the branch with smaller antenna offsets and records
+  that it did (`apres.calibratePhase`).
+
+## Code
+
+| folder | contents |
+|---|---|
+| `+apres/` | ApRES reading (`loadBurst`, `rangeProcess`, checked against an independent Python reader to 1e-7), `loadQuadpolSite` (polarization from file names, shared attenuator setting, sub-bin co-registration), `calibratePhase` (antenna phase offsets from reciprocity plus isotropic firn), `observables` and `coherenceField`, and `syntheticSite` |
+| `vendor/+ptt/` | ten unmodified `fabric_anisotropy` files at a pinned commit; see `vendor/README.md` |
+| `project/` | the guide, `check_step`, the student skeletons, and the reference solution |
+
+## Running everything
+
+```sh
+matlab -batch "run_all"          # lessons 0-9, figures -> figs/  (about 2 minutes)
+matlab -batch "run_all([6 8])"   # just some
+```
+
+## Data
+
+The GHOST 2023/24 polarimetric pRES measurements on Thwaites Glacier were
+made by Ole Zeising. The field log `GHOST24_PpRES_Log_OZ.pdf` ships with the
+data and gives the antenna layout used throughout.
