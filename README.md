@@ -57,10 +57,10 @@ wrong.
 
 Along the way, the guide makes the student test their own error bars. Their
 step-4 σ fails the Monte Carlo test (the synthesized azimuths have correlated
-errors; θ comes out about 4 times too large, the phase gradient 1.3 times too
-small), which motivates step 5. The guide
-ends by running their estimator on all four sites next to `ptt.ershadiFabric`,
-followed by open questions.
+errors): θ's σ is about 4 times too large and the phase gradient's σ about 1.3
+times too small, which motivates step 5. The guide ends by running their
+estimator on all four sites next to `ptt.ershadiFabric`, followed by open
+questions.
 
 **For instructors:**
 - `check_step(k, 'ref')` runs a test on the reference solution in
