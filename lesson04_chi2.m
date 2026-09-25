@@ -77,7 +77,7 @@ R = 3000;
 for s = 2:3
   sd_believed = scen{s,2};
   ws = 1 ./ sd_believed.^2;
-  C_M = inv(G' * (ws.*G));                           %#ok<MINV>
+  C_M = inv(G' * (ws.*G));
   est = zeros(R,1); scaled = zeros(R,1);
   for k = 1:R
     if s == 2, dk = G*m_true + sd_true .* randn(N,1);

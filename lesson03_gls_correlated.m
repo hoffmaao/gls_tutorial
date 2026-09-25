@@ -77,7 +77,7 @@ Gw = Lc \ G;
 dw = Lc \ d;
 m_gls   = Gw \ dw
 m_lscov = lscov(G, d, C_d)                    % agrees
-C_gls   = inv(Gw' * Gw);                      %#ok<MINV> = inv(G' inv(C_d) G)
+C_gls   = inv(Gw' * Gw);                      % = inv(G' inv(C_d) G)
 
 %% 6. Three treatments, compared by Monte Carlo
 % (a) IGNORE the correlation: diagonal C_d only

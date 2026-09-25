@@ -78,7 +78,7 @@ w(end-2:end)'                    % deep: tiny
 % No sigma^2 in front: the weights are the inverse variances.
 W = diag(w);
 m_wls = (G' * W * G) \ (G' * W * d)
-C_wls = inv(G' * W * G);                    %#ok<MINV>
+C_wls = inv(G' * W * G);
 
 % w .* G scales row i by w(i) without building W. Same result, less memory;
 % the fabric code writes it this way.
