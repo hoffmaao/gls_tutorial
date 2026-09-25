@@ -39,7 +39,7 @@ Each lesson will generate it's own data, identifies a porblem that uses these da
 `project/project_guide.m` walks the student through writing six functions in `project/student/`. 
 After each one, `check_step(k)` compares it with a hidden reference on data with a known answer, prints PASS or FAIL, and gives some suggestions about what might be wrong.
 
-| step | function | what it does |
+| step | function | description |
 |---|---|---|
 | 1 | `coh_model` | the single-column HH-VV coherence model |
 | 2 | `window_cost` | the weighted misfit, with the coherence scale solved in closed form |
