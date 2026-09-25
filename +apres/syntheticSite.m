@@ -3,10 +3,8 @@ function [Q, truth] = syntheticSite(truth, opts)
 %
 % [Q, truth] = apres.syntheticSite(truth, opts)
 %
-% Returns Q in the form apres.loadQuadpolSite(folder, struct('coregister',
-% false)) returns real data, so everything downstream can be tested on a
-% known answer first. The injected range offset is left in; pass Q through
-% apres.coregister to measure and remove it.
+% Returns Q in the same form apres.loadQuadpolSite returns real data,
+% so everything downstream can be tested on a known answer first.
 %
 % HOW IT IS MADE.
 %   1. ptt.fujitaModel gives the four channel amplitudes (hh, vv, hv = vh)
@@ -23,6 +21,8 @@ function [Q, truth] = syntheticSite(truth, opts)
 %   6. DERAMPING. Real FMCW data carry the conjugate of the model's
 %      coherence (Ershadi et al. 2022; ptt.ershadiFabric note E2), so the
 %      channels are conjugated to look like real data.
+%   7. CO-REGISTRATION (apres.coregister), exactly as for real data:
+%      the offset is measured and removed.
 %
 % truth (all optional)
 %   .top_m   layer tops [m]            default (0:250:1000)'
@@ -36,7 +36,7 @@ function [Q, truth] = syntheticSite(truth, opts)
 %   .antenna_phase ([0.7 -0.4])  [a b]: receive and transmit V-minus-H
 %                         antenna phases [rad] (apres.calibratePhase)
 %   .range_offset (0.6)   injected VV range offset vs HH [bins]
-%   .speckle (true)       false: every bin reflects equally (no speckle)
+%   .coregister (true)    measure and remove the range offsets
 %   .seed (1)
 
 if nargin < 1, truth = struct(); end
@@ -65,7 +65,6 @@ fm = ptt.fujitaModel(lay, z, 0, struct('fc', fc, 'eps_perp', 3.171));
 % speckle: one complex Gaussian amplitude per bin, smoothed over ~5 bins
 k = [0.2 0.6 1 0.6 0.2]';
 a = conv(complex(randn(numel(z)+4, 1), randn(numel(z)+4, 1)), k / norm(k), 'valid');
-if ~opt(opts, 'speckle', true), a = ones(size(a)); end   % a smooth, speckle-free column
 amp = a .* exp(-z / (2 * opt(opts, 'decay_m', 250)));
 
 sig_n = 10^(-opt(opts, 'snr_surface_db', 60) / 20);
@@ -90,6 +89,7 @@ end
 Q.z = z; Q.fc = fc; Q.site = 'synthetic';
 Q.true_offset_bins = struct('hv', 0, 'vh', 0, 'vv', opt(opts, 'range_offset', 0.6));
 Q.true_antenna_phase = ab;
+if opt(opts, 'coregister', true), Q = apres.coregister(Q, opts); end
 end
 
 function y = shiftBins(x, sh)

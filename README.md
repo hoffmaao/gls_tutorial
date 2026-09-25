@@ -56,7 +56,9 @@ wrong.
 | 6 | `fit_column` | the whole column, converted to Δλ, abstaining where it cannot know |
 
 Along the way, the guide makes the student test their own error bars. Their
-step-4 σ turns out several times too small, which motivates step 5. The guide
+step-4 σ matches the Monte Carlo scatter only because two mistakes cancel
+(σ per entry too large, correlated azimuths counted as independent), which
+motivates step 5. The guide
 ends by running their estimator on all four sites next to `ptt.ershadiFabric`,
 followed by open questions.
 
@@ -71,10 +73,10 @@ followed by open questions.
 
 Measured on synthetic sites (`apres.syntheticSite`), with 60 m windows:
 
-- **Δλ:** unbiased to about 0.002, and its jackknife σ is honest (slightly
-  cautious).
-- **θ:** its jackknife σ is still 2-3 times too small, and speckle adds a bias
-  of up to a few degrees. Quote θ with a floor of about ±3°.
+- **Δλ:** within about 0.006 of the truth, and its jackknife σ is about 2
+  times cautious.
+- **θ:** biased by up to about 2°, far more than its scatter, so neither
+  error bar covers it. Quote θ with a floor of about ±2°.
 - **Rotating axes:** it assumes one axis for the whole column above each
   window. Where the axis turns with depth, θ goes wrong below the turn, which
   is the case `fabricGLS` exists for.

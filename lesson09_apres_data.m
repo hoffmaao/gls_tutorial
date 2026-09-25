@@ -62,8 +62,11 @@ xlabel('\psi [deg from north]'); title('\sigma per real/imag part');
 
 %% 4. A synthetic site (apres.syntheticSite)
 % The same chain runs on a site with a chosen fabric, the known answer
-% the estimator is tested against first.
+% the estimator is tested against first. syntheticSite shifts VV by 0.6
+% bins and co-registers it like a real site.
 [Qs, truth] = apres.syntheticSite(struct('theta', deg2rad(30) * ones(5, 1)));
+fprintf('synthetic VV range offset: %.2f bins injected, %.2f measured\n', ...
+  Qs.true_offset_bins.vv, Qs.offset_bins.vv);
 Qs = apres.calibratePhase(Qs);
 Fs = apres.coherenceField(Qs, struct('z_range', [20 1200]));
 fprintf('synthetic: axis 30 deg, dlam %s by layer\n', mat2str(truth.dlam', 3));

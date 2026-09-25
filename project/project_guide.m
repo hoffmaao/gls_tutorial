@@ -78,13 +78,17 @@ for k = 1:R
   sg(k) = Ek.sigma(1); chi2(k) = Ek.chi2_dof;
   dl(k) = pk(3); sgd(k) = Ek.sigma(3);
 end
-fprintf('theta0: measured scatter %.2f deg, claimed %.2f deg -> ratio %.2f\n', ...
+fprintf('theta0: measured scatter %.3f deg, claimed %.3f deg -> ratio %.2f\n', ...
   rad2deg(std(th)), rad2deg(median(sg)), median(sg) / std(th));
 fprintf('ddelta: measured scatter %.5f, claimed %.5f -> ratio %.2f\n', ...
   std(dl), median(sgd), median(sgd) / std(dl));
 fprintf('median chi2/dof %.2f\n', median(chi2));
-% Both ratios are well below 1 while chi2/dof is below 1: the errors are
-% correlated (lesson 3). All 18 azimuths come from the same 4 channels.
+% The ratios come out near 1 (about 1.4 for theta0, 1.0 for ddelta), but
+% for the wrong reasons. chi2/dof is about 0.16, so sigma per entry is ~2.5x
+% too large; and all 18 azimuths come from the same 4 channels, so their
+% errors are correlated (lesson 3) and the fit counts them as independent.
+% The two mistakes happen to cancel here. Nothing says they cancel on
+% real data.
 
 %% Step 5 - resampled error bars
 % Edit project/student/window_jackknife.m, then check_step(5). Then repeat
@@ -98,16 +102,18 @@ for k = 1:R
   Jk = window_jackknife(fit_window(Wk), Wk);
   sj(k) = Jk.sigma(1); sjd(k) = Jk.sigma(3);
 end
-fprintf('theta0: measured %.2f deg, jackknife %.2f deg -> ratio %.2f\n', ...
+fprintf('theta0: measured %.3f deg, jackknife %.3f deg -> ratio %.2f\n', ...
   rad2deg(std(th)), rad2deg(median(sj)), median(sj) / std(th));
 fprintf('ddelta: measured %.5f, jackknife %.5f -> ratio %.2f\n', ...
   std(dl), median(sjd), median(sjd) / std(dl));
 fprintf('theta0 mean error %.2f deg\n', rad2deg(mean(th) - deg2rad(35)));
-% The jackknife makes the ddelta (so dlam) error bar honest. For theta0 it
-% still falls short by 2-3x: speckle moves theta0 in a way shared across
-% rows, which leaving one row out cannot see, and there is a depth-
-% dependent bias of up to a few degrees. Quote dlam with its jackknife
-% sigma and theta0 with a floor of about 3 degrees (open question 5).
+% The jackknife needs neither sigma nor independent azimuths, only rows
+% that are nearly independent. It comes out about 2x cautious for both
+% theta0 and ddelta. But theta0 is also biased: the mean error (~0.4 deg
+% here, up to ~2 deg in step 6) is far larger than its scatter, and no
+% error bar built from the scatter can see a bias. Quote dlam with its
+% jackknife sigma and theta0 with a floor of about 2 degrees (open
+% question 5).
 
 %% Step 6 - the whole column, known answer
 % Edit project/student/fit_column.m, then check_step(6).
@@ -174,6 +180,6 @@ end
 % 4. apres.calibratePhase chose between two branches that mirror theta0
 %    about north. Flip it (add pi to a and b) and rerun one site. What
 %    field information would decide it?
-% 5. The Monte Carlo measured how far the theta0 jackknife falls short.
-%    Calibrate an inflation factor on synthetics matched to each site
-%    (same n_looks, similar dlam) and apply it. What does that assume?
+% 5. The Monte Carlo found a theta0 bias larger than any error bar.
+%    Measure it on synthetics matched to each site (same n_looks, similar
+%    dlam) and use it as that site's floor. What does that assume?
