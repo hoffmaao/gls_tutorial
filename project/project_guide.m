@@ -83,10 +83,12 @@ fprintf('theta0: measured scatter %.3f deg, claimed %.3f deg -> ratio %.2f\n', .
 fprintf('ddelta: measured scatter %.5f, claimed %.5f -> ratio %.2f\n', ...
   std(dl), median(sgd), median(sgd) / std(dl));
 fprintf('median chi2/dof %.2f\n', median(chi2));
-% chi2/dof is about 0.8, so sigma per entry is right. Yet the ddelta ratio
-% is about 0.2: that error bar is ~5x too small (theta0: ~0.85). All 18
-% azimuths come from the same 4 channels, so their errors are correlated
-% (lesson 3), and the fit counts them as independent.
+% The two ratios disagree: theta0 ~3.9 (too large), ddelta ~0.75 (too
+% small). chi2/dof ~0.05 shows sigma per entry is generous here: at |C|
+% near 1 the floor in apres.observables (an allowance for model error)
+% sets it. And all 18 azimuths come from the same 4 channels, so their
+% errors are correlated (lesson 3) while the fit counts them as
+% independent. With both effects, the linearized sigma cannot be trusted.
 
 %% Step 5 - resampled error bars
 % Edit project/student/window_jackknife.m, then check_step(5). Then repeat
@@ -106,14 +108,15 @@ fprintf('ddelta: measured %.5f, jackknife %.5f -> ratio %.2f\n', ...
   std(dl), median(sjd), median(sjd) / std(dl));
 fprintf('theta0 mean error %.2f deg\n', rad2deg(mean(th) - deg2rad(35)));
 % The jackknife needs neither sigma nor independent azimuths, only rows
-% that are nearly independent. For ddelta it comes out ~1.4x cautious; for
-% theta0 it is still ~1.5x too small (ratio ~0.65). The theta0 mean error
-% is ~0.002 deg: no bias, because the synthetic firn (top 40 m) is
-% isotropic, as apres.calibratePhase assumes.
+% that are nearly independent. For ddelta it is ~1.4x cautious; for
+% theta0 it is ~2x too small (ratio ~0.5). The theta0 mean error is
+% ~0.002 deg. With fabric right up to the surface (firn_m 0) it is about
+% -1.1 deg instead: apres.calibratePhase takes the top 40 m as isotropic
+% and removes the fabric's phase there as if it were an antenna offset.
 %
 % Move the window to 400 m and rerun. The phase delta passes pi near
 % 370 m, where |C| drops sharply with azimuth; the model misfits there
-% (chi2/dof ~40-90) and fit_column abstains.
+% (chi2/dof ~27) and fit_column abstains.
 
 %% Step 6 - the whole column, known answer
 % Edit project/student/fit_column.m, then check_step(6).
@@ -122,7 +125,7 @@ fprintf('theta0 mean error %.2f deg\n', rad2deg(mean(th) - deg2rad(35)));
   'theta', deg2rad(30) * ones(5, 1), 'dlam', [0.05; 0.1; 0.15; 0.2; 0.25]), struct('seed', 7));
 Fs = apres.coherenceField(apres.calibratePhase(Qs), struct('z_range', [20 1200]));
 out = fit_column(Fs);
-zz = [tr.top_m'; [tr.top_m(2:end)' 1200]];          % each layer's top and bottom
+zz = [max(tr.top_m', tr.firn_m); [tr.top_m(2:end)' 1200]];   % each layer's top and bottom, below the firn
 figure('Name', 'Step 6', 'Position', [100 100 800 420]);
 subplot(1,2,1);
 plot(repelem(rad2deg(tr.theta'), 2), zz(:), 'k', 'LineWidth', 1.5); hold on;
@@ -138,9 +141,10 @@ set(gca, 'YDir', 'reverse'); xlim([0 0.3]); xlabel('\Delta\lambda'); grid on; ti
 %
 % Now rerun with the axis turning with depth:
 %     'theta', deg2rad([20; 25; 30; 35; 40])
-% Every window abstains (chi2/dof 10-1000). The model assumes one axis for
-% the whole column above each window; when the axis turns, the coherence
-% at depth carries every layer above it. Handling that needs a model of the
+% Most windows abstain (chi2/dof 5-160); the few that pass below 750 m
+% report theta0 13-18 deg off while dlam stays right. The model assumes
+% one axis for the whole column above each window; when the axis turns,
+% the coherence at depth carries every layer above it. Handling that needs a model of the
 % full column, which is what ptt.fabricGLS is (lesson 7).
 
 %% Four real sites
@@ -180,6 +184,6 @@ end
 % 4. apres.calibratePhase chose between two branches that mirror theta0
 %    about north. Flip it (add pi to a and b) and rerun one site. What
 %    field information would decide it?
-% 5. The Monte Carlo found the theta0 jackknife ~1.5x too small.
+% 5. The Monte Carlo found the theta0 jackknife ~2x too small.
 %    Calibrate an inflation factor on synthetics matched to each site
 %    (same n_looks, similar dlam) and apply it. What does that assume?

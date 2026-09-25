@@ -3,7 +3,7 @@ function J = window_jackknife(p, W)
 %
 % J = window_jackknife(p, W)
 %
-% The step-4 error bars are too small (guide, Monte Carlo test): the 18
+% The step-4 error bars fail the Monte Carlo test (guide): the 18
 % azimuths are synthesized from 4 channels, so their errors are correlated
 % (lesson 3), and a sigma per entry treats them as independent.
 %

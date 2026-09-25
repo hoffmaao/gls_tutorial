@@ -9,8 +9,8 @@ function [Q, truth] = syntheticSite(truth, opts)
 % HOW IT IS MADE.
 %   1. ptt.fujitaModel gives the four channel amplitudes (hh, vv, hv = vh)
 %      of a layered fabric column, with the antennas at azimuth 0. The
-%      top firn_m is isotropic firn, as apres.calibratePhase assumes, so
-%      the first layer starts at firn_m even if its top_m is shallower.
+%      top firn_m is isotropic firn, as apres.calibratePhase assumes: a
+%      first layer given from 0 m starts below the firn.
 %   2. SPECKLE. Real ice returns a random sum of many small reflections in
 %      every range bin. Every channel sees the same reflectors, so each
 %      depth gets ONE random complex amplitude shared by all four
@@ -31,6 +31,7 @@ function [Q, truth] = syntheticSite(truth, opts)
 %   .theta   axis azimuth per layer, radians clockwise from the H antenna
 %   .dlam    horizontal eigenvalue difference per layer
 %   .r_db    anisotropic scattering ratio per layer (dB), default 0
+% The returned truth lists these layers as given, plus .firn_m.
 % opts (all optional)
 %   .fc (300e6), .dz (0.21), .z_max (1400)
 %   .firn_m (40)          isotropic firn thickness [m]
@@ -49,8 +50,16 @@ nL    = numel(top);
 theta = opt(truth, 'theta', deg2rad(35) * ones(nL, 1));
 dlam  = opt(truth, 'dlam', linspace(0.03, 0.12, nL)');
 r_db  = opt(truth, 'r_db', zeros(nL, 1));
-top(1) = max(top(1), opt(opts, 'firn_m', 40));
-truth = struct('top_m', top(:), 'theta', theta(:), 'dlam', dlam(:), 'r_db', r_db(:));
+firn = opt(opts, 'firn_m', 40);
+if any(diff(top) <= 0)
+  error('apres:syntheticSite:order', 'truth.top_m must increase');
+end
+if any(top(2:end) <= firn)
+  error('apres:syntheticSite:firn', ...
+    'only the first layer may start inside the %g m of isotropic firn', firn);
+end
+truth = struct('top_m', top(:), 'theta', theta(:), 'dlam', dlam(:), 'r_db', r_db(:), ...
+  'firn_m', firn);
 
 fc   = opt(opts, 'fc', 300e6);
 dz   = opt(opts, 'dz', 0.21);
@@ -58,9 +67,10 @@ zmax = opt(opts, 'z_max', 1400);
 rng(opt(opts, 'seed', 1));
 
 z = (dz:dz:zmax)';
-lay = struct('top_m', num2cell([0; truth.top_m]), 'dlam', num2cell([0; truth.dlam]), ...
+lay = struct('top_m', num2cell([0; max(truth.top_m(1), firn); truth.top_m(2:end)]), 'dlam', num2cell([0; truth.dlam]), ...
   'theta', num2cell([truth.theta(1); truth.theta]), 'r_db', num2cell([0; truth.r_db]), ...
   'gx_db', num2cell(zeros(nL + 1, 1)));
+if firn <= 0, lay = lay(2:end); end
 % eps_perp must match the constant fit_column converts phase rate to dlam
 % with (ptt.constants eps_bar = 3.171); fujitaModel's own default is the
 % paper's 3.15, which would put a 0.3% scale bias into the truth.

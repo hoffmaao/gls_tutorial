@@ -103,7 +103,7 @@ if ~isempty(zr), keep = keep(z(keep) >= zr(1) & z(keep) <= zr(2)); end
 % near 1. sigma is the average of the two, the typical error of one real
 % or imaginary part.
 Ck = C(keep, :);
-q = max(1 - abs(Ck).^2, 1e-4);
+q = max(1 - abs(Ck).^2, 0.02);                  % floor: allowance for model error
 sigma = sqrt(q .* (1 + q) / (4 * n_looks));
 
 O = struct('z', z(keep), 'psi', psi, 'C', Ck, 'sigma', sigma, ...

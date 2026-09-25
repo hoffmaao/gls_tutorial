@@ -56,8 +56,9 @@ wrong.
 | 6 | `fit_column` | the whole column, converted to Δλ, abstaining where it cannot know |
 
 Along the way, the guide makes the student test their own error bars. Their
-step-4 σ for the phase gradient turns out about 5 times too small (the
-synthesized azimuths have correlated errors), which motivates step 5. The guide
+step-4 σ fails the Monte Carlo test (the synthesized azimuths have correlated
+errors; θ comes out about 4 times too large, the phase gradient 1.3 times too
+small), which motivates step 5. The guide
 ends by running their estimator on all four sites next to `ptt.ershadiFabric`,
 followed by open questions.
 
@@ -74,14 +75,15 @@ Measured on synthetic sites (`apres.syntheticSite`), with 60 m windows:
 
 - **Δλ:** within about 0.005 of the truth, and its jackknife σ is about 1.4
   times cautious.
-- **θ:** unbiased when the top 40 m is isotropic, but its jackknife σ is about
-  1.5 times too small. The phase calibration assumes that isotropic firn;
-  with fabric right up to the surface it biases θ (0.4° at Δλ = 0.08).
+- **θ:** its jackknife σ is about 2 times too small. It is unbiased when the
+  top 40 m is isotropic. The phase calibration assumes that firn; with fabric
+  right up to the surface it biases θ by about −1.1° (Δλ = 0.08, 12 seeds),
+  which is where the "speckle bias" of earlier versions came from.
 - **Phase nodes:** where the birefringent phase passes π, |C| drops sharply
   with azimuth, the model misfits (χ²/dof ≫ 5) and those windows abstain.
 - **Rotating axes:** it assumes one axis for the whole column above each
-  window. Where the axis turns with depth the model misfits and the windows
-  abstain; that is the case `fabricGLS` exists for.
+  window. Where the axis turns with depth most windows abstain, and the few
+  that pass get θ wrong; that is the case `fabricGLS` exists for.
 - **Weak fabric:** windows abstain when Δλ is below about 0.07 (too little
   phase turn in 60 m at 300 MHz).
 - **Choice of branch:** the phase calibration can't tell θ from −θ (a mirror
