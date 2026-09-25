@@ -1,13 +1,10 @@
-# GLS tutorial: from a straight line to your own ice-fabric estimator
+# GLS tutorial
 
-A MATLAB course in the generalized least squares (GLS) inference used in
-[`fabric_anisotropy`](https://github.com/hoffmaao/fabric_anisotropy). It
-assumes no linear algebra background. It ends with the student building
-their own least-squares fabric estimator and running it on four real
-quad-pol ApRES sites.
+This is a MATLAB tutorial that walks through the implementation of generalized least squares (GLS) inference. 
+It assumes no linear algebra background. 
+It walks through the fitting routine and ends with the student building their own least-squares fabric estimator and running it on four real quad-pol ApRES sites.
 
-It runs on a personal computer with MATLAB alone, and needs no toolboxes,
-servers or other repositories.
+It is intended to run on your personal computer with MATLAB preinstalled.
 
 ## Setup
 
@@ -23,8 +20,7 @@ at a time (Ctrl+Enter, or Cmd+Enter on a Mac) and read what it prints.
 
 ## Lessons
 
-Each lesson makes data with a known answer, solves it, and checks the error
-bar by Monte Carlo against what the formula claims.
+Each lesson will generate it's own data, identifies a porblem that uses these data and then solves the problem, and checks the error estimates using Monte Carlo methods.
 
 | # | file | new idea | where it lives in `fabric_anisotropy` |
 |---|---|---|---|
