@@ -1,0 +1,5 @@
+# Gate configuration for no-mistakes, see
+# https://kunchenguid.github.io/no-mistakes/reference/repo-config/
+# The tutorial runs in licensed MATLAB, so there is no hosted CI; validate
+# locally with `matlab -batch "run_all"` and check_step(1..6, 'ref').
+no_ci: true
