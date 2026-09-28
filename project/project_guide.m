@@ -149,9 +149,9 @@ semilogx(out.sigma_dlam(k), out.zw(k), 's', B.sd_dlam(k), out.zw(k), 'o', mc_dl(
   'MarkerSize', 8, 'LineWidth', 1.2);
 set(gca, 'YDir', 'reverse'); grid on; xlabel('\sigma of \Delta\lambda'); title('\Delta\lambda error bars');
 % Below about 115 m the repeats follow the true scatter window by window;
-% shallower windows have no simulated error bar (bootstrap_column explains
-% why). The formula sits above both. On real data, only the formula and
-% the repeats exist.
+% a window has no simulated error bar if it is too shallow, or if fewer
+% than 3 repeats reported (bootstrap_column explains why). The formula
+% sits above both. On real data, only the formula and the repeats exist.
 
 %% Four real sites
 % The estimator on the GHOST sites beside ptt.ershadiFabric (Ershadi et
@@ -186,7 +186,8 @@ for s = 1:4
   fprintf('%s: %d of %d windows reported, median chi2/dof %.1f\n', name, nnz(out.ok), numel(out.ok), median(out.chi2_dof));
 end
 % Grey: ptt.ershadiFabric. Orange: the estimator, error bars from repeats.
-% Black x: the estimator in windows too shallow for repeats (no error bar).
+% Black x: no simulated error bar (too shallow, or fewer than 3 repeats
+% reported).
 
 %% OPEN QUESTIONS
 % 1. Where do the two methods disagree, and which is better supported?
