@@ -41,6 +41,10 @@ function [Q, truth] = syntheticSite(truth, opts)
 %                         antenna phases [rad] (apres.calibratePhase)
 %   .range_offset (0.6)   injected VV range offset vs HH [bins]
 %   .coregister (true)    measure and remove the range offsets
+%   .vv_coherence (1)     coherence of VV with the other channels: a
+%                         number, or a [depth, value] table
+%   .speckle_width ([])   Gaussian speckle kernel width [bins]; default
+%                         the fixed 5-bin kernel
 %   .seed (1)
 
 if nargin < 1, truth = struct(); end
@@ -76,17 +80,34 @@ if firn <= 0, lay = lay(2:end); end
 % paper's 3.15, which would put a 0.3% scale bias into the truth.
 fm = ptt.fujitaModel(lay, z, 0, struct('fc', fc, 'eps_perp', 3.171));
 
-% speckle: one complex Gaussian amplitude per bin, smoothed over ~5 bins
-k = [0.2 0.6 1 0.6 0.2]';
-a = conv(complex(randn(numel(z)+4, 1), randn(numel(z)+4, 1)), k / norm(k), 'valid');
+% speckle: one complex Gaussian amplitude per bin, smoothed over ~5 bins,
+% or by a Gaussian of speckle_width bins (wider: fewer independent looks)
+k = apres.syntheticSite_kernel(opt(opts, 'speckle_width', []));
+nk = numel(k) - 1;
+a = conv(complex(randn(numel(z)+nk, 1), randn(numel(z)+nk, 1)), k / norm(k), 'valid');
 amp = a .* exp(-z / (2 * opt(opts, 'decay_m', 250)));
 
 sig_n = 10^(-opt(opts, 'snr_surface_db', 60) / 20);
 noise = @() sig_n * complex(randn(numel(z), 1), randn(numel(z), 1)) / sqrt(2);
 
+% VV decorrelation: real HH and VV shots agree less than the model says
+% (|C| 0.45-0.8 at the GHOST sites). Give VV its own speckle in part:
+% a_vv = g a + sqrt(1 - g^2) a2, with g = vv_coherence (a number, or a
+% two-column [depth g] table interpolated in depth).
+gv = opt(opts, 'vv_coherence', 1);
+if ~isscalar(gv)
+  gv = interp1(gv(:, 1), gv(:, 2), z, 'linear', 'extrap');
+end
+gv = min(max(gv, 0), 1);
+amp_vv = amp;
+if any(gv < 1)                        % draw only when used, so seeds stay comparable
+  a2 = conv(complex(randn(numel(z)+nk, 1), randn(numel(z)+nk, 1)), k / norm(k), 'valid');
+  amp_vv = (gv .* a + sqrt(1 - gv.^2) .* a2) .* exp(-z / (2 * opt(opts, 'decay_m', 250)));
+end
+
 Q = struct();
 Q.hh = amp .* fm.s_hh(:, 1) + noise();
-Q.vv = amp .* fm.s_vv(:, 1) + noise();
+Q.vv = amp_vv .* fm.s_vv(:, 1) + noise();
 Q.hv = amp .* fm.s_hv(:, 1) + noise();
 Q.vh = amp .* fm.s_hv(:, 1) + noise();
 

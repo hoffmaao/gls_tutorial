@@ -7,7 +7,7 @@ function ok = check_step(k, impl)
 % ok = check_step(...)    also return true/false
 %
 %   1 coh_model         2 window_cost       3 fit_window
-%   4 window_errors     5 window_jackknife  6 fit_column
+%   4 window_errors     5 fit_column        6 bootstrap_column
 %
 % Every test uses data whose answer is known, and tells you what is wrong
 % when it fails - read the message before changing code.
@@ -24,7 +24,7 @@ end
 
 f = handles(impl);
 names = {'coh_model', 'window_cost', 'fit_window', 'window_errors', ...
-         'window_jackknife', 'fit_column'};
+         'fit_column', 'bootstrap_column'};
 fprintf('\n--- step %d: %s (%s) ---\n', k, names{k}, impl);
 try
   switch k
@@ -32,8 +32,8 @@ try
     case 2, ok = test_cost(f);
     case 3, ok = test_fit(f);
     case 4, ok = test_errors(f);
-    case 5, ok = test_jackknife(f);
-    case 6, ok = test_column(f);
+    case 5, ok = test_column(f);
+    case 6, ok = test_bootstrap(f);
     otherwise, error('check_step:k', 'steps are numbered 1 to 6');
   end
 catch err
@@ -56,24 +56,25 @@ function f = handles(impl)
 if strcmp(impl, 'ref')
   f = struct('coh_model', @ref.coh_model, 'window_cost', @ref.window_cost, ...
     'fit_window', @ref.fit_window, 'window_errors', @ref.window_errors, ...
-    'window_jackknife', @ref.window_jackknife, 'fit_column', @ref.fit_column);
+    'fit_column', @ref.fit_column, 'bootstrap_column', @ref.bootstrap_column);
 else
   f = struct('coh_model', @coh_model, 'window_cost', @window_cost, ...
     'fit_window', @fit_window, 'window_errors', @window_errors, ...
-    'window_jackknife', @window_jackknife, 'fit_column', @fit_column);
+    'fit_column', @fit_column, 'bootstrap_column', @bootstrap_column);
 end
 end
 
-function W = test_window(p, noise, seed)
-% A window of data made from the model itself: 7 rows 10 m apart, 18
-% azimuths, coherence 0.8, plus noise of the given size.
-rng(seed);
-psi = deg2rad(0:10:170);
-z = (170:10:230)';
-W = struct('psi', psi, 'z', z, 'zc', 200);
-C0 = 0.8 * ref.coh_model(psi, z, 200, p);
-W.sigma = noise * ones(size(C0));
-W.C = C0 + noise * complex(randn(size(C0)), randn(size(C0)));
+function [W, truth] = test_window(theta_deg, dlam, zc, seed)
+% One 60 m window of a synthetic site with a uniform fabric below the firn:
+% real coherence rows with their correlated covariance (apres.coherenceField),
+% so a fit that ignores the whitening matrices gets the wrong answer.
+Q = apres.calibratePhase(apres.syntheticSite(struct('top_m', 40, ...
+  'theta', deg2rad(theta_deg), 'dlam', dlam), struct('seed', seed, 'z_max', 1500)));
+F = apres.coherenceField(Q, struct('z_range', [zc - 40, zc + 40]));
+r = abs(F.z - zc) <= 30;
+W = struct('psi', F.psi, 'z', F.z_eff(r), 'zc', zc, 'C', F.C(r, :), ...
+  'Wh', F.Wh(:, :, r), 'rank', F.rank(r));
+truth = [deg2rad(theta_deg); NaN; dlam * 2*pi*300e6*0.034 / (sqrt(3.171)*0.299792458e9)];
 end
 
 function ok = test_model(f)
@@ -106,21 +107,21 @@ fprintf('|H| at one depth ranges %.3f to %.3f over azimuth (should be one number
 end
 
 function ok = test_cost(f)
-p = [deg2rad(35); 0.7; 0.02];
-W = test_window(p, 0.05, 1);
+W = test_window(35, 0.08, 500, 1);
+p = [deg2rad(40); 0.5; 0.01];
 [c, g, r] = f.window_cost(p, W);
 [cr, gr, rr] = ref.window_cost(p, W);
 ok = true;
-if ~isreal(g) || abs(g - gr) > 1e-10
-  fprintf('g = %s, should be %.6f. Use real(conj(H).*C) and sum over ALL entries.\n', num2str(g), gr);
+if ~isreal(g) || abs(g - gr) > 1e-8 * max(1, abs(gr))
+  fprintf('g = %s, should be %.6f. Whiten data and model with Wh first, then sum over every entry.\n', num2str(g), gr);
   ok = false;
 end
 if ~isequal(size(r), size(rr))
-  fprintf('r is %s but should be %s: one real COLUMN, real parts then imaginary parts.\n', ...
+  fprintf('r is %s but should be %s: one column, row by row, Wh_i * [Re; Im] of each row.\n', ...
     mat2str(size(r)), mat2str(size(rr)));
   ok = false;
-elseif max(abs(r - rr)) > 1e-10
-  fprintf('r differs from the reference by up to %.2g. Divide by sigma; stack [real; imag].\n', max(abs(r - rr)));
+elseif max(abs(r - rr)) > 1e-8 * max(1, max(abs(rr)))
+  fprintf('r differs from the reference by up to %.2g. Whiten each row: Wh_i * [Re C_i, Im C_i]'' (pagemtimes(W.Wh, d)).\n', max(abs(r - rr)));
   ok = false;
 end
 if abs(c - cr) > 1e-8 * cr
@@ -128,21 +129,20 @@ if abs(c - cr) > 1e-8 * cr
   ok = false;
 end
 if ok
-  fprintf('cost %.1f for %d real residuals: about 1 per residual, as it should be at the truth.\n', c, numel(r));
+  fprintf('cost %.1f with %d independent numbers in the window.\n', c, sum(W.rank));
 end
 end
 
 function ok = test_fit(f)
-cases = [35 0.7 0.02; 172 -2.5 0.035; 95 1.9 0.012];
+cases = [35 0.08 500 11; 172 0.12 400 12; 95 0.06 600 13];
 ok = true;
 for i = 1:size(cases, 1)
-  p = [deg2rad(cases(i,1)); cases(i,2); cases(i,3)];
-  W = test_window(p, 0.03, 10 + i);
+  [W, truth] = test_window(cases(i,1), cases(i,2), cases(i,3), cases(i,4));
   tic; [ph, c] = f.fit_window(W); t = toc;
-  [~, cr] = ref.fit_window(W);
-  dth = rad2deg(abs(angle(exp(2i*(ph(1) - p(1))))) / 2);
-  fprintf('case %d: truth theta %5.1f deg ddelta %.3f | yours %5.1f deg %.4f | cost %.1f (ref %.1f) | %.1f s\n', ...
-    i, cases(i,1), cases(i,3), rad2deg(ph(1)), ph(3), c, cr, t);
+  [pr, cr] = ref.fit_window(W);
+  dth = rad2deg(abs(angle(exp(2i*(ph(1) - truth(1))))) / 2);
+  fprintf('case %d: truth theta %5.1f deg ddelta %.4f | yours %5.1f deg %.4f | cost %.1f (ref %.1f) | %.1f s\n', ...
+    i, cases(i,1), truth(3), rad2deg(ph(1)), ph(3), c, cr, t);
   if ph(3) < 0
     fprintf('  ddelta is negative: apply the convention (part C).\n'); ok = false;
   end
@@ -150,17 +150,16 @@ for i = 1:size(cases, 1)
     fprintf('  theta0 must be wrapped into [0, pi).\n'); ok = false;
   end
   if c > cr * 1.001 + 1e-6
-    fprintf('  your cost is higher than the reference: a false bottom, or Gauss-Newton stopped early.\n'); ok = false;
+    fprintf('  your cost is higher than the reference: a false minimum, or Gauss-Newton stopped early.\n'); ok = false;
   end
-  if dth > 1 || abs(ph(3) - p(3)) > 5e-4
-    fprintf('  too far from the truth (theta off by %.2f deg).\n', dth); ok = false;
+  if dth > 1 || abs(ph(3) - pr(3)) > 0.02 * pr(3)
+    fprintf('  too far from the reference answer (theta off the truth by %.2f deg).\n', dth); ok = false;
   end
 end
 end
 
 function ok = test_errors(f)
-p = [deg2rad(35); 0.7; 0.02];
-W = test_window(p, 0.05, 2);
+W = test_window(35, 0.08, 500, 2);
 ph = ref.fit_window(W);
 E = f.window_errors(ph, W);
 Er = ref.window_errors(ph, W);
@@ -172,43 +171,13 @@ rel = max(abs(E.sigma(:) - Er.sigma(:)) ./ Er.sigma(:));
 fprintf('sigma: yours %s, reference %s\n', mat2str(E.sigma', 3), mat2str(Er.sigma', 3));
 fprintf('chi2/dof: yours %.3f, reference %.3f (dof %d)\n', E.chi2_dof, Er.chi2_dof, Er.dof);
 if abs(E.dof - Er.dof) > 0
-  fprintf('  dof should be numel(r) - 4.\n'); ok = false;
+  fprintf('  dof should be sum(W.rank) - 4: the independent numbers, not numel(r).\n'); ok = false;
 end
 if abs(E.chi2_dof - Er.chi2_dof) > 1e-6
   fprintf('  chi2_dof = cost / dof.\n'); ok = false;
 end
 if rel > 0.02
   fprintf('  sigma differs by %.0f%%: C_M = inv(J''*J), then sqrt(diag), then widen.\n', 100*rel); ok = false;
-end
-end
-
-function ok = test_jackknife(f)
-% THE BRANCH TRAP. Put the ESTIMATED axis exactly on 0 = 180 deg, so the
-% leave-one-out replicates land on both sides of the wrap: make the data,
-% see where the estimate lands, then remake them (same noise) with the
-% truth shifted by that much.
-p = [0; -2.5; 0.035];
-for it = 1:6                                      % walk the estimate onto the wrap
-  W = test_window(p, 0.05, 3);
-  ph = ref.fit_window(W);
-  off = angle(exp(2i*ph(1))) / 2;                 % estimate's distance from 0 = 180
-  if abs(off) < deg2rad(1e-3), break; end
-  p(1) = p(1) - off;
-end
-J = f.window_jackknife(ph, W);
-Jr = ref.window_jackknife(ph, W);
-ok = isfield(J, 'sigma') && numel(J.sigma) == 3;
-if ~ok, fprintf('J.sigma should hold 3 numbers.\n'); return; end
-fprintf('jackknife sigma: yours %s, reference %s\n', mat2str(J.sigma', 3), mat2str(Jr.sigma', 3));
-rel = max(abs(J.sigma(:) - Jr.sigma(:)) ./ Jr.sigma(:));
-if rel > 0.05
-  ok = false;
-  if J.sigma(1) > 10 * Jr.sigma(1)
-    fprintf('  theta0 sigma is huge: the true axis is at 0 = 180 deg, so replicates land on\n');
-    fprintf('  near 0 deg. Fold each replicate onto the full answer''s branch first.\n');
-  else
-    fprintf('  differs by %.0f%%: drop ONE row per replicate, restart from p, scale by (n-1)/n.\n', 100*rel);
-  end
 end
 end
 
@@ -232,7 +201,39 @@ good = out.ok & outr.ok;
 if any(abs(out.dlam(good) - outr.dlam(good)) > 1e-3)
   fprintf('dlam differs from the reference: dlam = ddelta / grad_per_dlam.\n'); ok = false;
 end
-if any(isnan(out.jk_dlam(outr.ok)))
-  fprintf('jk_dlam is missing: store the jackknife sigma of ddelta divided by grad_per_dlam.\n'); ok = false;
+if ~isfield(out, 'theta0_fit') || any(isnan(out.theta0_fit))
+  fprintf('theta0_fit is missing: keep the unmasked theta0 and dlam (step 6 needs them).\n'); ok = false;
+end
+if any(abs(out.sigma_dlam(good) - outr.sigma_dlam(good)) > 0.02 * outr.sigma_dlam(good))
+  fprintf('sigma_dlam differs from the reference: sigma of ddelta divided by grad_per_dlam.\n'); ok = false;
+end
+end
+
+function ok = test_bootstrap(f)
+[Q, ~] = apres.syntheticSite(struct('top_m', [0; 200], 'theta', deg2rad([179.7; 179.7]), ...   % axis at the 0 = 180 wrap
+  'dlam', [0.05; 0.1]), struct('z_max', 1500, 'seed', 4));
+F = apres.coherenceField(apres.calibratePhase(Q), struct('z_range', [20 420]));
+out = ref.fit_column(F);
+o = struct('n_rep', 4);
+tic; B = f.bootstrap_column(out, F, o); t = toc;
+Br = ref.bootstrap_column(out, F, o);
+k = out.ok;
+disp(table(round(out.zw(k)), round(rad2deg(B.sd_theta0(k)), 4), round(rad2deg(Br.sd_theta0(k)), 4), ...
+  round(B.sd_dlam(k), 5), round(Br.sd_dlam(k), 5), B.n_ok(k), ...
+  'VariableNames', {'z', 'sd_theta', 'ref_sd_theta', 'sd_dlam', 'ref_sd_dlam', 'n_ok'}))
+fprintf('%.0f s for %d windows x %d replicas\n', t, nnz(k), o.n_rep);
+ok = isequal(B.n_ok, Br.n_ok);
+if ~ok, fprintf('Replica counts differ: use seed seed0 + 1000*i + k and count only reported refits.\n'); return; end
+rel = max(abs(B.sd_theta0(k) - Br.sd_theta0(k)) ./ Br.sd_theta0(k));
+if ~(rel < 1e-6)
+  ok = false;
+  if any(B.sd_theta0(k) > 10 * Br.sd_theta0(k))
+    fprintf('theta0 spread is far too large: fold each replica onto the window''s axis first.\n');
+  else
+    fprintf('theta0 spread differs by %.0f%%: std over the reported replicas only.\n', 100*rel);
+  end
+end
+if any(abs(B.sd_dlam(k) - Br.sd_dlam(k)) > 1e-6 * Br.sd_dlam(k))
+  fprintf('dlam spread differs from the reference.\n'); ok = false;
 end
 end

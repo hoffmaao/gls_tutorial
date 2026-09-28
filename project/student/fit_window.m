@@ -19,8 +19,7 @@ function [p, cost, info] = fit_window(W, opts)
 %    mod and delta0 into (-pi, pi] with angle(exp(1i*delta0)).
 %
 % opts (optional): .theta_step_deg (5), .ddelta_max (0.08), .n_ddelta (17),
-%   .n_delta0 (12), .max_iter (30), .p0 (skip the grid, start here; used
-%   by step 5).
+%   .n_delta0 (12), .max_iter (30), .p0 (skip the grid, start here).
 %
 % Check:  check_step(3)
 
