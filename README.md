@@ -19,10 +19,10 @@ at a time (Ctrl+Enter, or Cmd+Enter on a Mac) and read what it prints.
 
 ## Lessons
 
-Each lesson will generate it's own data, identifies a porblem that uses these data and then solves the problem, and checks the error estimates using Monte Carlo methods.
+Each lesson generates its own data, identifies a problem that uses these data and then solves the problem, and checks the error estimates using Monte Carlo methods.
 
 | # | file | description |
-|---|---|---|---|
+|---|---|---|
 | 0 | `lesson00_matlab_matrices.m` | vectors, `G*m`, `'`, `.*`, `\`, variance, covariance |
 | 1 | `lesson01_ols.m` | least squares by grid search, then normal equations; `C_M`; Monte Carlo |
 | 2 | `lesson02_wls.m` | 1/variance weights; the coherence-phase CRB |
@@ -80,6 +80,8 @@ synthetic sites (`apres.syntheticSite`) with 60 m windows:
   model errors near phase nodes wrecked fits.
 - **Simulated repeats (step 6):** within about 1-2× of the true scatter,
   window by window, for both θ and Δλ. These are the error bars to quote.
+  Windows centred shallower than about 115 m get none (too shallow to
+  rebuild in simulation; see `bootstrap_column`).
 - **Phase nodes:** where the birefringent phase passes π the model misfits
   (χ²/dof ≫ 5) and those windows abstain.
 - **Rotating axes:** the model assumes one axis for the whole column above
