@@ -10,8 +10,9 @@ function B = bootstrap_column(out, F, opts)
 % reproduce that window, refit the window in each, and measure the spread.
 % Each replica has the window's theta0 from the firn down, the window's
 % dlam around the window, and an upper layer that puts the window at its
-% fitted phase delta0 (the same point in the phase cycle). It is matched
-% to the real data:
+% fitted phase delta0 (the same point in the phase cycle). Windows centred
+% shallower than about 115 m leave no room for that upper layer, so they
+% are skipped (NaN spread, n_ok 0). Each replica is matched to the data:
 %   signal   decay_m from a straight-line fit of F.snr_db (dB) against
 %            depth, anchored to the window's own SNR
 %   VV       decorrelation so the replica's fitted g matches the data's
@@ -45,7 +46,7 @@ cf = polyfit(F.z(:), F.snr_db(:), 1);
 base = struct('snr_surface_db', cf(2), ...
   'decay_m', min(max(-(10/log(10)) / min(cf(1), -eps), 20), 5000), ...
   'speckle_width', matchWidth(F.n_looks, F.win_m, F.dz), ...
-  'fc', F.fc, 'firn_m', firn);
+  'dz', F.dz, 'fc', F.fc, 'firn_m', firn);
 
 B = struct('sd_theta0', nan(Nw,1), 'sd_dlam', nan(Nw,1), 'n_ok', zeros(Nw,1), ...
   'theta0_reps', nan(Nw,R), 'dlam_reps', nan(Nw,R), 'site_opts', base);
@@ -57,16 +58,13 @@ for i = find(out.ok(:)).'
   % cross-polarized signal for apres.calibratePhase (it needs HV and VH
   % between 40 and 800 m). The window sits in a lower layer with the
   % window's dlam; the upper layer's dlam is chosen so the phase at the
-  % window equals the fitted delta0.
+  % window equals the fitted delta0. Too shallow for that layer: skip.
   top = zc - win/2 - 25;
-  if top > firn + 20
-    need = mod(out.delta0(i) - dd * (zc - top), 2*pi) + 2*pi*(0:50);
-    dl_up = need / (gpd * (top - firn));
-    dl_up = dl_up(find(dl_up >= 0.02, 1));
-    truth = struct('top_m', [firn; top], 'theta', [th; th], 'dlam', [dl_up; dd / gpd]);
-  else
-    truth = struct('top_m', firn, 'theta', th, 'dlam', dd / gpd);
-  end
+  if top <= firn + 20, continue; end
+  need = mod(out.delta0(i) - dd * (zc - top), 2*pi) + 2*pi*(0:50);
+  dl_up = need / (gpd * (top - firn));
+  dl_up = dl_up(find(dl_up >= 0.02, 1));
+  truth = struct('top_m', [firn; top], 'theta', [th; th], 'dlam', [dl_up; dd / gpd]);
   so = base;
   so.z_max = max(zc + win/2 + 40, 1500);   % a full-length record for coregistration
   % signal: the fitted decay, anchored to this window's measured SNR

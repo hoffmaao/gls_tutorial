@@ -29,7 +29,8 @@ function O = observables(Q, opts)
 %      shifted by k bins. This is the n_looks fabricGLS needs.
 %   5. DECIMATION. Rows closer than the window share samples, so their
 %      errors are correlated. Keeping one row per win_m makes the rows
-%      independent, which is what a diagonal C_d assumes (lesson 3).
+%      independent, so C_d is block diagonal: one full block per row
+%      (lesson 3).
 %
 % opts
 %   .win_m        (20)   depth window for the moments [m]
