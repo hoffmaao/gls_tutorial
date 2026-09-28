@@ -3,10 +3,10 @@ function E = window_errors(p, W)
 %
 % E = ref.window_errors(p, W)
 %
-% Linearize at the answer (lesson 6, section 7): with J the Jacobian of the
-% whitened residual, the posterior covariance is C_M = inv(J'J) (lesson 1,
-% with the whitening of lesson 2 already inside J). Then (lesson 4):
-%   dof      = number of real residuals - 3 nonlinear - 1 for g
+% The residuals are whitened with each row's full covariance, so the
+% Jacobian J of r gives the posterior covariance directly (lessons 1, 3, 6):
+%   C_M      = inv(J'J)
+%   dof      = sum(W.rank) - 4        (independent numbers minus 3 + g)
 %   chi2_dof = cost / dof
 %   sigma    = sqrt(diag(C_M)) * sqrt(max(chi2_dof, 1))   widen, never shrink
 %
@@ -21,7 +21,7 @@ for j = 1:3
   J(:, j) = (rj - r) / h(j);
 end
 C_M = inv(J' * J);
-dof = numel(r) - 4;
+dof = sum(W.rank) - 4;
 chi2_dof = cost / dof;
 E = struct('sigma', sqrt(max(diag(C_M), 0)) * sqrt(max(chi2_dof, 1)), ...
   'C_M', C_M, 'chi2_dof', chi2_dof, 'dof', dof, 'g', g);

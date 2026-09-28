@@ -1,14 +1,17 @@
 function E = window_errors(p, W)
-%WINDOW_ERRORS Step 4: linearized error bars and the chi-square check.
+%WINDOW_ERRORS Step 4: formula error bars and the chi-square check.
 %
 % E = window_errors(p, W)
 %
-% 1. J: the Jacobian at the answer, as in step 3 (same nudges h).
-% 2. The residuals are whitened, so lesson 1's C_M = sigma^2 inv(G'G) is
+% 1. J: the Jacobian of the whitened residuals at the answer, as in step 3
+%    (same nudges h).
+% 2. The residuals are whitened with each row's full covariance, so
+%    lesson 1's C_M = sigma^2 inv(G'G) is simply
 %        C_M = inv(J' * J)
-% 3. Chi-square (lesson 4): each real entry of r is one datum; the fit used
-%    3 parameters plus g:
-%        dof = numel(r) - 4
+% 3. Chi-square (lesson 4). Each row carries W.rank(i) independent
+%    numbers (not 2Np: the azimuths share the same four channels). The fit
+%    used 3 parameters plus g:
+%        dof = sum(W.rank) - 4
 %        chi2_dof = cost / dof
 % 4. Widen, never shrink (lesson 4; ptt.fabricGLS):
 %        sigma = sqrt(diag(C_M)) * sqrt(max(chi2_dof, 1))

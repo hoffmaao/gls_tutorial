@@ -1,24 +1,26 @@
 function [cost, g, r] = window_cost(p, W)
-%WINDOW_COST Reference solution, step 2: weighted misfit with gamma solved exactly.
+%WINDOW_COST Reference solution, step 2: GLS misfit with g solved exactly.
 %
 % [cost, g, r] = ref.window_cost(p, W)
 %
 % W.psi [1 x Np], W.z [Nz x 1], W.zc, W.C [Nz x Np] complex data,
-% W.sigma [Nz x Np] noise per real/imaginary part.
+% W.Wh [2Np x 2Np x Nz] whitening matrix of each row (apres.coherenceField).
 %
-% The model is g * H(p) with g a real scale (the coherence loss). g enters
-% linearly, so for fixed p the weighted least-squares g is a one-unknown
-% problem (lesson 1, section 3, with weights):
-%     g = sum(w .* real(conj(H) .* C)) / sum(w .* |H|^2),   w = 1 ./ sigma.^2
-% g is real because the synthesized field obeys C(psi+90) = conj(C(psi)):
-% a complex g would come out real anyway (see apres.calibratePhase).
-% r is the WHITENED residual (lesson 2): real and imaginary parts of
-% (C - g H) ./ sigma stacked into one real column. cost = r' * r.
+% Each row's data vector is d_i = [Re C_i, Im C_i]', and Wh_i * d_i has
+% independent unit-variance entries (lesson 3). The model is g * H(p):
+%     g = sum_i (Wh_i h_i)'(Wh_i d_i) / sum_i |Wh_i h_i|^2
+% (lesson 1's one-unknown formula in whitened units), clamped at 0: a
+% negative g would mean the pattern is upside down, which no ice makes.
+%     r = stacked Wh_i (d_i - g h_i),   cost = r' * r.
 
 H = ref.coh_model(W.psi, W.z, W.zc, p);
-w = 1 ./ W.sigma.^2;
-g = sum(w .* real(conj(H) .* W.C), 'all') / sum(w .* abs(H).^2, 'all');
-e = (W.C - g * H) ./ W.sigma;
-r = [real(e(:)); imag(e(:))];
+Nz = numel(W.z);
+d = reshape([real(W.C), imag(W.C)].', [], 1, Nz);   % [2Np x 1 x Nz]
+h = reshape([real(H),   imag(H)].',   [], 1, Nz);
+dw = pagemtimes(W.Wh, d);
+hw = pagemtimes(W.Wh, h);
+g = sum(hw .* dw, 'all') / sum(hw.^2, 'all');
+g = max(g, 0);                 % a coherence scale cannot be negative
+r = reshape(dw - g * hw, [], 1);
 cost = r' * r;
 end

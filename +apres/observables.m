@@ -39,8 +39,9 @@ function O = observables(Q, opts)
 %
 % O fields
 %   z [Nz x 1], psi [1 x Np], dP_hh, dP_hv, phi, Cmag [Nz x Np],
-%   C [Nz x Np] complex HH-VV coherence, sigma [Nz x Np] its noise per
-%   real/imaginary component,
+%   C [Nz x Np] complex HH-VV coherence, Cd [2Np x 2Np x Nz] covariance of
+%   [Re C; Im C] for each row, sigma [Nz x Np] typical error per real or
+%   imaginary part (for plots),
 %   n_looks, win_m, fc, snr_db [Nz x 1] (co-pol power over the noise floor),
 %   rho (the speckle autocorrelation used for n_looks)
 
@@ -95,22 +96,41 @@ keep = (1:nr:Nt)';
 keep = keep(keep > (nr-1)/2 & keep <= Nt - (nr-1)/2);   % whole windows only
 if ~isempty(zr), keep = keep(z(keep) >= zr(1) & z(keep) <= zr(2)); end
 
-% complex coherence and its per-component noise, for fitting the complex
-% field directly (the project). For a coherence estimated from N looks the
-% phase variance is (1-|C|^2)/(2N|C|^2) (lesson 2), so the scatter ACROSS
-% the phasor - |C| times that - has variance (1-|C|^2)/(2N). ALONG the
-% phasor (the magnitude) it is (1-|C|^2)^2/(2N), much smaller when |C| is
-% near 1. sigma is the average of the two, the typical error of one real
-% or imaginary part.
-Ck = C(keep, :);
-q = max(1 - abs(Ck).^2, 0.02);                  % floor: allowance for model error
-sigma = sqrt(q .* (1 + q) / (4 * n_looks));
+% --- effective depth of each row. The moments average the window with
+% weights set by the speckle brightness, so a row's coherence belongs to
+% the power-weighted mean depth of its window, not to its centre.
+Pbin = abs(S.hh).^2 + abs(S.vv).^2 + abs(S.hv).^2 + abs(S.vh).^2;
+kr = ones(nr, 1);
+z_eff = conv(Pbin .* z, kr, 'same') ./ max(conv(Pbin, kr, 'same'), realmin);
 
-O = struct('z', z(keep), 'psi', psi, 'C', Ck, 'sigma', sigma, ...
+% --- 6. the covariance of the coherence field, row by row
+% Every synthesized coherence is a function of the same 4x4 moments, so
+% the 18 azimuths in a row share their errors. For N looks of complex
+% Gaussian channels the moments' covariance is known exactly, and
+% linearizing carries it to [Re C; Im C] (apres.coherenceCov). Rows one
+% window apart are independent, so C_d is block diagonal, one block per row.
+Ck = C(keep, :);
+Nk = numel(keep);
+Cd = zeros(2*Np, 2*Np, Nk);
+for i = 1:Nk
+  Cd(:, :, i) = apres.coherenceCov(reshape(M(keep(i), :, :), 4, 4), n_looks, psi);
+end
+if deramped                                    % C -> conj(C) flips Im
+  Cd(1:Np, Np+1:end, :) = -Cd(1:Np, Np+1:end, :);
+  Cd(Np+1:end, 1:Np, :) = -Cd(Np+1:end, 1:Np, :);
+end
+% typical error of one real or imaginary part, for plotting
+sigma = zeros(Nk, Np);
+for i = 1:Nk
+  dg = diag(Cd(:, :, i));
+  sigma(i, :) = sqrt((dg(1:Np) + dg(Np+1:end)).' / 2);
+end
+
+O = struct('z', z(keep), 'z_eff', z_eff(keep), 'psi', psi, 'C', Ck, 'sigma', sigma, 'Cd', Cd, ...
   'dP_hh', dP_hh(keep, :), 'dP_hv', dP_hv(keep, :), ...
   'phi', angle(C(keep, :)), 'Cmag', abs(C(keep, :)), ...
   'n_looks', n_looks, 'win_m', win_m, 'fc', Q.fc, ...
-  'snr_db', snr_db(keep), 'rho', rho, 'nr', nr);
+  'snr_db', snr_db(keep), 'rho', rho, 'nr', nr, 'dz', dz);
 end
 
 % -------------------------------------------------------------------------

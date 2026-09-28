@@ -21,8 +21,7 @@ dd_g = linspace(0, opt(opts, 'ddelta_max', 0.08), opt(opts, 'n_ddelta', 17));
 nd0  = opt(opts, 'n_delta0', 12);
 d0_g = (0:nd0-1) * 2*pi / nd0;
 
-% --- 1. grid, unless a starting point was given (the jackknife, step 5,
-% restarts from the full-data answer instead of searching again)
+% --- 1. grid, unless a starting point was given
 if isfield(opts, 'p0') && ~isempty(opts.p0)
   p = opts.p0(:); best = ref.window_cost(p, W);
 else

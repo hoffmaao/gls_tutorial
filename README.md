@@ -42,18 +42,17 @@ After each one, `check_step(k)` compares it with a hidden reference on data with
 | step | function | description |
 |---|---|---|
 | 1 | `coh_model` | the single-column HH-VV coherence model |
-| 2 | `window_cost` | the weighted misfit, with the coherence scale solved in closed form |
+| 2 | `window_cost` | the GLS misfit: each depth row whitened with its full covariance, coherence scale solved in closed form |
 | 3 | `fit_window` | grid search, then Gauss-Newton with a line search |
-| 4 | `window_errors` | linearized error bars and the chi-square check |
-| 5 | `window_jackknife` | leave-one-row-out error bars |
-| 6 | `fit_column` | the whole column, converted to Δλ, abstaining where it cannot know |
+| 4 | `window_errors` | formula error bars and the chi-square check |
+| 5 | `fit_column` | the whole column, converted to Δλ, abstaining where it cannot know |
+| 6 | `bootstrap_column` | error bars by repeating each window's measurement in simulation |
 
-Along the way, the guide makes the student test their own error bars. Their
-step-4 σ fails the Monte Carlo test (the synthesized azimuths have correlated
-errors): θ's σ is about 4 times too large and the phase gradient's σ about 1.3
-times too small, which motivates step 5. The guide ends by running their
-estimator on all four sites next to `ptt.ershadiFabric`, followed by open
-questions.
+Along the way the guide has the student test their error bars. Step 4
+compares the formula with the scatter over 20 synthetic sites; step 6
+repeats each window in simulation and compares with the true scatter. The
+guide ends by running the estimator on all four sites next to
+`ptt.ershadiFabric`, followed by open questions.
 
 **For instructors:**
 - `check_step(k, 'ref')` runs a test on the reference solution in
@@ -64,30 +63,43 @@ questions.
 
 ### What the reference estimator can and can't do
 
-Measured on synthetic sites (`apres.syntheticSite`), with 60 m windows:
+The four radar channels are the measurements; the 18 synthesized azimuths
+in each depth row are made from them and carry only about 7 independent
+numbers. `apres.coherenceField` therefore gives each row its full covariance
+(`apres.coherenceCov`, checked against simulation to within 6% at 10 looks)
+and a whitening matrix, and the estimator is a proper GLS fit. Measured on
+synthetic sites (`apres.syntheticSite`) with 60 m windows:
 
-- **Δλ:** within about 0.005 of the truth, and its jackknife σ is about 1.4
-  times cautious.
-- **θ:** its jackknife σ is about 2 times too small. It is unbiased when the
-  top 40 m is isotropic. The phase calibration assumes that firn; with fabric
-  right up to the surface it biases θ by about −1.1° (Δλ = 0.08, 12 seeds),
-  which is where the "speckle bias" of earlier versions came from.
-- **Phase nodes:** where the birefringent phase passes π, |C| drops sharply
-  with azimuth, the model misfits (χ²/dof ≫ 5) and those windows abstain.
-- **Rotating axes:** it assumes one axis for the whole column above each
-  window. Where the axis turns with depth most windows abstain, and the few
-  that pass get θ wrong; that is the case `fabricGLS` exists for.
+- **Accuracy:** θ is unbiased (mean error 0.002°) and Δλ within 0.001-0.002
+  of the truth. Modelling each row at its brightness-weighted depth
+  (`F.z_eff`) instead of its centre cut the Δλ scatter tenfold.
+- **Formula error bars (step 4):** cautious, never optimistic: about 1.7× the
+  true scatter for θ and 5× for Δλ. The caution comes from `cond_floor`,
+  which raises every variance in a row to at least 5% of the row's largest,
+  so no direction of the data is trusted as near-perfect; without it, small
+  model errors near phase nodes wrecked fits.
+- **Simulated repeats (step 6):** within about 1-2× of the true scatter,
+  window by window, for both θ and Δλ. These are the error bars to quote.
+- **Phase nodes:** where the birefringent phase passes π the model misfits
+  (χ²/dof ≫ 5) and those windows abstain.
+- **Rotating axes:** the model assumes one axis for the whole column above
+  each window. Where the axis turns with depth most windows abstain and the
+  rest get θ wrong; that is the case `fabricGLS` exists for.
 - **Weak fabric:** windows abstain when Δλ is below about 0.07 (too little
   phase turn in 60 m at 300 MHz).
-- **Choice of branch:** the phase calibration can't tell θ from −θ (a mirror
-  about north). It picks the branch with smaller antenna offsets and records
-  that it did (`apres.calibratePhase`).
+- **Real sites:** 9-11 of 16-18 windows reported, median χ²/dof 1.7-3.7: the
+  single-column model fits real ice less well than synthetics, and the
+  error bars are widened by √(χ²/dof).
+- **Calibration:** the phase calibration needs cross-polarized signal between
+  40 and 800 m and assumes the top 40 m is isotropic firn. It cannot tell θ
+  from −θ (a mirror about north); it picks the branch with smaller antenna
+  offsets and records that it did (`apres.calibratePhase`).
 
 ## Code
 
 | folder | contents |
 |---|---|
-| `+apres/` | ApRES reading (`loadBurst`, `rangeProcess`, checked against an independent Python reader to 1e-7), `loadQuadpolSite` (polarization from file names, shared attenuator setting, sub-bin co-registration), `calibratePhase` (antenna phase offsets from reciprocity plus isotropic firn), `observables` and `coherenceField`, and `syntheticSite` |
+| `+apres/` | ApRES reading (`loadBurst`, `rangeProcess`, checked against an independent Python reader to 1e-7), `loadQuadpolSite` (polarization from file names, shared attenuator setting, sub-bin co-registration), `calibratePhase` (antenna phase offsets from reciprocity plus isotropic firn), `observables`, `coherenceField` and `coherenceCov` (the coherence field, its per-row covariance and whitening), and `syntheticSite` (known-answer sites, with adjustable speckle, signal and VV coherence) |
 | `vendor/+ptt/` | ten unmodified `fabric_anisotropy` files at a pinned commit; see `vendor/README.md` |
 | `project/` | the guide, `check_step`, the student skeletons, and the reference solution |
 
