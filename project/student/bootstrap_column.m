@@ -30,8 +30,8 @@ function B = bootstrap_column(out, F, opts)
 % Check:  check_step(6)
 %
 % B fields per window: sd_theta0, sd_dlam (spread of the refits; NaN for
-%   abstained windows or fewer than 3 reported refits), n_ok (refits that
-%   reported), theta0_reps, dlam_reps [Nw x n_rep], site_opts
+%   abstained or skipped shallow windows or fewer than 3 reported refits),
+%   n_ok (refits that reported), theta0_reps, dlam_reps [Nw x n_rep], site_opts
 
 if nargin < 3, opts = struct(); end
 R   = opt(opts, 'n_rep', 20);

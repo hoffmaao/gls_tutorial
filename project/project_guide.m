@@ -148,8 +148,10 @@ subplot(1,2,2);
 semilogx(out.sigma_dlam(k), out.zw(k), 's', B.sd_dlam(k), out.zw(k), 'o', mc_dl(k), out.zw(k), 'k.', ...
   'MarkerSize', 8, 'LineWidth', 1.2);
 set(gca, 'YDir', 'reverse'); grid on; xlabel('\sigma of \Delta\lambda'); title('\Delta\lambda error bars');
-% The repeats follow the true scatter window by window; the formula sits
-% above both. On real data, only the formula and the repeats exist.
+% Below about 115 m the repeats follow the true scatter window by window;
+% shallower windows have no simulated error bar (bootstrap_column explains
+% why). The formula sits above both. On real data, only the formula and
+% the repeats exist.
 
 %% Four real sites
 % The estimator on the GHOST sites beside ptt.ershadiFabric (Ershadi et
@@ -165,22 +167,26 @@ for s = 1:4
   F.C = F.C(g, :); F.Wh = F.Wh(:, :, g); F.rank = F.rank(g);
   out = fit_column(F);
   B = bootstrap_column(out, F, struct('n_rep', 10));
+  hb = isfinite(B.sd_theta0);                         % windows with a simulated error bar
   Er = ptt.ershadiFabric(struct('hh', Q.hh, 'vv', Q.vv, 'hv', Q.hv, 'vh', Q.vh), Q.z, ...
     struct('fc', Q.fc, 'win_m', 10, 'grad_win_m', 30, 'coh_min', 0.3));
   subplot(2, 4, s);
   plot(mod(rad2deg(Er.theta), 180), Q.z, '.', 'Color', [0.75 0.75 0.75], 'MarkerSize', 2); hold on;
-  errorbar(rad2deg(out.theta0), out.zw, rad2deg(B.sd_theta0), 'horizontal', 'o', 'LineWidth', 1.2);
+  errorbar(rad2deg(out.theta0(hb)), out.zw(hb), rad2deg(B.sd_theta0(hb)), 'horizontal', 'o', 'LineWidth', 1.2);
+  plot(rad2deg(out.theta0(~hb)), out.zw(~hb), 'kx', 'MarkerSize', 8, 'LineWidth', 1.2);
   set(gca, 'YDir', 'reverse'); xlim([0 180]); ylim([0 1200]); grid on;
   title(name, 'Interpreter', 'none'); xlabel('\theta_0 [deg from north]');
   if s == 1, ylabel('depth [m]'); end
   subplot(2, 4, 4 + s);
   plot(Er.dlam, Q.z, '.', 'Color', [0.75 0.75 0.75], 'MarkerSize', 2); hold on;
-  errorbar(out.dlam, out.zw, B.sd_dlam, 'horizontal', 'o', 'LineWidth', 1.2);
+  errorbar(out.dlam(hb), out.zw(hb), B.sd_dlam(hb), 'horizontal', 'o', 'LineWidth', 1.2);
+  plot(out.dlam(~hb), out.zw(~hb), 'kx', 'MarkerSize', 8, 'LineWidth', 1.2);
   set(gca, 'YDir', 'reverse'); xlim([0 0.5]); ylim([0 1200]); grid on;
   xlabel('\Delta\lambda'); if s == 1, ylabel('depth [m]'); end
   fprintf('%s: %d of %d windows reported, median chi2/dof %.1f\n', name, nnz(out.ok), numel(out.ok), median(out.chi2_dof));
 end
 % Grey: ptt.ershadiFabric. Orange: the estimator, error bars from repeats.
+% Black x: the estimator in windows too shallow for repeats (no error bar).
 
 %% OPEN QUESTIONS
 % 1. Where do the two methods disagree, and which is better supported?
